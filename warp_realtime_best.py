@@ -20,20 +20,20 @@ import sqlite3
 # 6) OBJECTS: each target needs ref_frame_name, ref_mask_path, clean_ref_path.
 
 
-COLMAP_DIR = r"C:\Users\Administrator\Desktop\uni\MasterArbeit\Li\finaltest\test7\colmap\sparse_txt"
-MODEL_IMAGE_GLOB = r"C:\Users\Administrator\Desktop\uni\MasterArbeit\Li\finaltest\test7\images_sub\frame_*.png"
-DATABASE_PATH = r"C:\Users\Administrator\Desktop\uni\MasterArbeit\Li\finaltest\test7\colmap\skeleton.db"
-VIDEO_SOURCE: Any = r"C:\Users\Administrator\Desktop\uni\MasterArbeit\Li\finaltest\realtime\realtime.mp4"
-OUTPUT_VIDEO_PATH: Optional[str] = r"C:\Users\Administrator\Desktop\uni\MasterArbeit\Li\finaltest\realtime\output_realtime_8.mp4"
-DEBUG_VIDEO_PATH: Optional[str] = r"C:\Users\Administrator\Desktop\uni\MasterArbeit\Li\finaltest\realtime\debug_realtime_8.mp4"
+COLMAP_DIR = r"/mnt/sda2/Students/Realtime-inpainting/colmap/sparse_txt"
+MODEL_IMAGE_GLOB = r"/mnt/sda2/Students/Realtime-inpainting/colmap/images_sub/frame_*.png"
+DATABASE_PATH = r"/mnt/sda2/Students/Realtime-inpainting/colmap/skeleton.db"
+VIDEO_SOURCE: Any = r"/mnt/sda2/Students/Realtime-inpainting/realtime.mp4"
+OUTPUT_VIDEO_PATH: Optional[str] = r"/mnt/sda2/Students/Realtime-inpainting/output/output_realtime_8.mp4"
+DEBUG_VIDEO_PATH: Optional[str] = r"/mnt/sda2/Students/Realtime-inpainting/output/realtime/debug_realtime_8.mp4"
 
 DEBUG_DIR = os.path.join("_tmp_run_output", "warp_realtime")
 MAP_CACHE_PATH = os.path.join(DEBUG_DIR, "colmap_descriptor_map_db_sift.npz")
 REBUILD_DESCRIPTOR_MAP = False
 
-SHOW_DEBUG_WINDOW = True
+SHOW_DEBUG_WINDOW = False
 SAVE_DEBUG_FRAME_EVERY = 0
-RESIZE_INPUT_TO_MODEL = True
+RESIZE_INPUT_TO_MODEL = False
 WINDOW_DEBUG = "warp_realtime_debug"
 WINDOW_OUTPUT = "warp_realtime_output"
 OUTPUT_FPS = 20.0
@@ -48,36 +48,36 @@ OBJECTS: List[Dict[str, Any]] = [
     {
         "name": "obj1",
         "ref_frame_name": "frame_000001.png",
-        "ref_mask_path": r"C:\Users\Administrator\Desktop\uni\MasterArbeit\Li\finaltest\test7\mask_obj1.png",
-        "clean_ref_path": r"C:\Users\Administrator\Desktop\uni\MasterArbeit\Li\finaltest\test7\clean_ref_obj1.png",
+        "ref_mask_path": r"/home/tianxg/Documents/MyProjects/thesis/mask_obj1.png",
+        "clean_ref_path": r"/home/tianxg/Documents/MyProjects/thesis/clean_ref_obj1.png",
         "priority": 10,
     },
     {
         "name": "obj2",
         "ref_frame_name": "frame_000673.png",
-        "ref_mask_path": r"C:\Users\Administrator\Desktop\uni\MasterArbeit\Li\finaltest\test7\mask_obj2.png",
-        "clean_ref_path": r"C:\Users\Administrator\Desktop\uni\MasterArbeit\Li\finaltest\test7\clean_ref_obj2.png",
+        "ref_mask_path": r"/home/tianxg/Documents/MyProjects/thesis/mask_obj2.png",
+        "clean_ref_path": r"/home/tianxg/Documents/MyProjects/thesis/clean_ref_obj2.png",
         "priority": 9,
     },
     {
         "name": "obj3",
         "ref_frame_name": "frame_001174.png",
-        "ref_mask_path": r"C:\Users\Administrator\Desktop\uni\MasterArbeit\Li\finaltest\test7\mask_obj3.png",
-        "clean_ref_path": r"C:\Users\Administrator\Desktop\uni\MasterArbeit\Li\finaltest\test7\clean_ref_obj3.png",
+        "ref_mask_path": r"/home/tianxg/Documents/MyProjects/thesis/mask_obj3.png",
+        "clean_ref_path": r"/home/tianxg/Documents/MyProjects/thesis/clean_ref_obj3.png",
         "priority": 8,
     },
     {
         "name": "obj4",
         "ref_frame_name": "frame_001666.png",
-        "ref_mask_path": r"C:\Users\Administrator\Desktop\uni\MasterArbeit\Li\finaltest\test7\mask_obj4.png",
-        "clean_ref_path": r"C:\Users\Administrator\Desktop\uni\MasterArbeit\Li\finaltest\test7\clean_ref_obj4.png",
+        "ref_mask_path": r"/home/tianxg/Documents/MyProjects/thesis/mask_obj4.png",
+        "clean_ref_path": r"/home/tianxg/Documents/MyProjects/thesis/clean_ref_obj4.png",
         "priority": 8,
     },
     {
         "name": "obj5",
         "ref_frame_name": "frame_001990.png",
-        "ref_mask_path": r"C:\Users\Administrator\Desktop\uni\MasterArbeit\Li\finaltest\test7\mask_obj5.png",
-        "clean_ref_path": r"C:\Users\Administrator\Desktop\uni\MasterArbeit\Li\finaltest\test7\clean_ref_obj5.png",
+        "ref_mask_path": r"/home/tianxg/Documents/MyProjects/thesis/mask_obj5.png",
+        "clean_ref_path": r"/home/tianxg/Documents/MyProjects/thesis/clean_ref_obj5.png",
         "priority": 8,
     },
 ]
@@ -193,7 +193,25 @@ def read_points3D_txt(path: str) -> Dict[int, np.ndarray]:
     return pts
 
 
-def fit_plane_ransac(points: np.ndarray, iters: int = 3000, inlier_th: float = PLANE_INLIER_TH) -> Tuple[np.ndarray, float, np.ndarray]:
+def fit_plane_ransac(
+    points: np.ndarray,
+    iters: int = 3000,
+    inlier_th: float = PLANE_INLIER_TH,
+    Tcw_ref: Optional[np.ndarray] = None,
+) -> Tuple[np.ndarray, float, np.ndarray]:
+    """Fit a plane to 3D points using RANSAC.
+    
+    Args:
+        points: Nx3 array of 3D points in world coordinates
+        iters: number of RANSAC iterations
+        inlier_th: inlier distance threshold
+        Tcw_ref: optional camera pose to constrain normal direction towards camera
+    
+    Returns:
+        n: plane normal (normalized)
+        d: plane equation coefficient (n·p + d = 0)
+        inliers: boolean array of inlier points
+    """
     assert points.shape[0] >= 3
     rng = np.random.default_rng(0)
     M = points.shape[0]
@@ -223,6 +241,20 @@ def fit_plane_ransac(points: np.ndarray, iters: int = 3000, inlier_th: float = P
     n = vh[-1]
     n = n / np.linalg.norm(n)
     d = -np.dot(n, centroid)
+    
+    # Constrain normal direction: make it point towards the camera if Tcw_ref is provided
+    if Tcw_ref is not None:
+        Rcw = Tcw_ref[:3, :3].astype(np.float64)
+        tcw = Tcw_ref[:3, 3].astype(np.float64)
+        # Camera center in world coordinates
+        Cw = -Rcw.T @ tcw
+        # Vector from plane centroid to camera
+        to_cam = Cw - centroid
+        # If normal points away from camera, flip it
+        if np.dot(n, to_cam) < 0:
+            n = -n
+            d = -d
+    
     return n.astype(np.float64), float(d), best_inliers
 
 
@@ -529,14 +561,17 @@ def build_registered_object(
     if obj_pts.shape[0] < MIN_OBJ_POINTS:
         raise RuntimeError(f"[{obj_name}] Too few 3D points inside mask: {obj_pts.shape[0]}")
 
-    n_w, d_w, inliers = fit_plane_ransac(obj_pts, iters=3000, inlier_th=PLANE_INLIER_TH)
+    # Get reference camera pose to constrain normal direction
+    Tcw_ref = pose_from_qvec_tvec(ref_info["qvec"], ref_info["tvec"])
+    
+    # Fit plane with normal constrained to point towards camera
+    n_w, d_w, inliers = fit_plane_ransac(obj_pts, iters=3000, inlier_th=PLANE_INLIER_TH, Tcw_ref=Tcw_ref)
     print(f"[{obj_name}] plane(world): inliers={int(inliers.sum())}/{obj_pts.shape[0]}")
 
     support_xyz = obj_pts[inliers]
     support_ref_pts = obj_ref_xys[inliers]
     support_pids = obj_pids[inliers]
     ref_corners = extract_corners_from_mask(ref_mask).astype(np.float64)
-    Tcw_ref = pose_from_qvec_tvec(ref_info["qvec"], ref_info["tvec"])
 
     obj_debug_dir = os.path.join(out_dir, "registered", obj_name)
     os.makedirs(obj_debug_dir, exist_ok=True)
@@ -1031,6 +1066,75 @@ def count_visible_support_points(points_w: np.ndarray, Tcw: np.ndarray, K: np.nd
     return int(np.sum(visible))
 
 
+def draw_object_normal(
+    debug_img: np.ndarray,
+    obj: Dict[str, Any],
+    Tcw_cur: np.ndarray,
+    K: np.ndarray,
+    scale: float = 50.0,
+) -> np.ndarray:
+    """Draw the object's plane normal as an arrow on the debug image.
+    
+    The normal is stored in world coordinates (n_w) and transformed to camera
+    coordinates for visualization.
+    """
+    try:
+        vis = debug_img.copy()
+        H_img, W_img = vis.shape[:2]
+        
+        # Get a point on the plane (center of support points)
+        if obj["support_xyz"].shape[0] == 0:
+            return vis
+        
+        # Plane center in world coordinates
+        plane_center_w = obj["support_xyz"].mean(axis=0)
+        normal_w = obj["n_w"]
+        
+        # Transform to camera coordinates
+        Rcw = Tcw_cur[:3, :3]
+        tcw = Tcw_cur[:3, 3]
+        plane_center_c = Rcw @ plane_center_w + tcw
+        
+        if plane_center_c[2] <= 0:  # Behind camera
+            return vis
+        
+        # Project center to image
+        u_c = K[0, 0] * (plane_center_c[0] / plane_center_c[2]) + K[0, 2]
+        v_c = K[1, 1] * (plane_center_c[1] / plane_center_c[2]) + K[1, 2]
+        
+        if u_c < 0 or u_c >= W_img or v_c < 0 or v_c >= H_img:
+            return vis
+        
+        pt_center = (int(round(u_c)), int(round(v_c)))
+        
+        # Transform normal as direction vector (no translation)
+        normal_c = Rcw @ normal_w
+        # Scale the normal and add to center in camera coordinates
+        plane_end_c = plane_center_c + normal_c * (scale / 100.0)
+        
+        if plane_end_c[2] <= 0:  # Behind camera
+            return vis
+        
+        u_end = K[0, 0] * (plane_end_c[0] / plane_end_c[2]) + K[0, 2]
+        v_end = K[1, 1] * (plane_end_c[1] / plane_end_c[2]) + K[1, 2]
+        
+        pt_end = (int(round(u_end)), int(round(v_end)))
+        
+        # Draw normal arrow (blue for world normal)
+        cv2.arrowedLine(vis, pt_center, pt_end, (255, 0, 0), 2, tipLength=0.3, line_type=cv2.LINE_AA)
+        cv2.circle(vis, pt_center, 4, (255, 0, 0), -1, lineType=cv2.LINE_AA)
+        
+        # Draw text showing normal values
+        text = f"n=({normal_w[0]:.2f}, {normal_w[1]:.2f}, {normal_w[2]:.2f})"
+        cv2.putText(vis, text, (pt_center[0] + 10, pt_center[1] - 10), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1, cv2.LINE_AA)
+        
+        return vis
+    except Exception as e:
+        print(f"[WARNING] Error drawing normal: {e}")
+        return debug_img
+
+
 def render_object_on_frame(
     obj: Dict[str, Any],
     img: np.ndarray,
@@ -1046,8 +1150,21 @@ def render_object_on_frame(
     if d_cur < MIN_PLANE_DEPTH:
         return img, None, None, False
 
-    n_cur, _ = plane_world_to_cam(obj["n_w"], obj["d_w"], Tcw_cur)
-    if n_cur[2] > MAX_VISIBLE_NORMAL_Z:
+    # More robust normal facing check: use dot product
+    # Get camera center in world coordinates
+    Rcw = Tcw_cur[:3, :3]
+    tcw = Tcw_cur[:3, 3]
+    Cw = -Rcw.T @ tcw
+    
+    # Vector from camera to plane center
+    plane_center_w = obj["support_xyz"].mean(axis=0)
+    to_plane = plane_center_w - Cw
+    to_plane = to_plane / np.linalg.norm(to_plane)
+    
+    # Dot product of world normal with camera-to-plane vector
+    # Should be positive if normal points towards camera
+    dot_product = np.dot(obj["n_w"], to_plane)
+    if dot_product > 0.01:  # Threshold: only render if normal points sufficiently towards camera
         return img, None, None, False
 
     visible_support = count_visible_support_points(obj["support_xyz"], Tcw_cur, K, H_img, W_img)
@@ -1285,6 +1402,9 @@ def main() -> None:
                             0.6 * tmp[auto_mask > 127] + 0.4 * np.array([0, 255, 0], dtype=np.float32)
                         ).astype(np.uint8)
                         debug_overlay = tmp
+                    
+                    # Debug: draw object normal vector
+                    debug_overlay = draw_object_normal(debug_overlay, obj, Tcw_cur, K_undist, scale=50.0)
 
             now = time.perf_counter()
             dt = max(now - last_time, 1e-6)
